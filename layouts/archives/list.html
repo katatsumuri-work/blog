@@ -1,0 +1,22 @@
+{{ define "main" }}
+<h1 class="page-title">{{ .Title }}</h1>
+{{ with .Content }}<div class="page-content">{{ . }}</div>{{ end }}
+
+{{ $posts := where .Site.RegularPages "Section" "posts" }}
+{{ range $posts.GroupByDate "2006" }}
+  <section class="archive-year">
+    <h2 class="archive-year__title">{{ .Key }}年</h2>
+    {{ range .Pages.GroupByDate "2006-01" }}
+      <h3 class="archive-month__title">{{ dateFormat "1月" (printf "%s-01" .Key) }}</h3>
+      <ul class="post-list">
+        {{ range .Pages }}
+        <li>
+          <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "01/02" }}</time>
+          <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+        </li>
+        {{ end }}
+      </ul>
+    {{ end }}
+  </section>
+{{ end }}
+{{ end }}

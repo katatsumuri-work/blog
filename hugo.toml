@@ -1,9 +1,18 @@
-baseURL = 'https://katatsumuri.work/blog/'
+baseURL = 'https://blog.katatsumuri.work/'
 locale = 'ja-jp'
 defaultContentLanguage = 'ja'
 hasCJKLanguage = true
 title = 'カタツムリワークス ブログ'
 enableRobotsTXT = true
+
+# ホーム等の一覧は 1 ページ 14 件でページ送り。
+[pagination]
+  pagerSize = 14
+
+# 記事 URL は /:year/:month/:day/:slug/（日付階層型）。
+# slug は記事の frontmatter slug を使う（無ければタイトル由来）。
+[permalinks]
+  posts = '/:year/:month/:day/:slug/'
 
 [taxonomies]
   category = 'categories'
