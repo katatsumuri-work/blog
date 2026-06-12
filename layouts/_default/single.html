@@ -1,0 +1,16 @@
+{{ define "main" }}
+<article class="post">
+  <h1 class="post-title">{{ .Title }}</h1>
+  <p class="post-meta">
+    <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2006年1月2日" }}</time>
+    {{- with .Params.categories }} ・
+      {{- range . }}
+        <a href="{{ (printf "categories/%s/" (urlize .)) | relURL }}">{{ . }}</a>
+      {{- end }}
+    {{- end }}
+  </p>
+  <div class="post-content">
+    {{ .Content }}
+  </div>
+</article>
+{{ end }}

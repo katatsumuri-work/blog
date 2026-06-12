@@ -1,0 +1,22 @@
+baseURL = 'https://katatsumuri.work/blog/'
+locale = 'ja-jp'
+defaultContentLanguage = 'ja'
+hasCJKLanguage = true
+title = 'カタツムリワークス ブログ'
+enableRobotsTXT = true
+
+[taxonomies]
+  category = 'categories'
+  tag = 'tags'
+
+[params]
+  description = '合同会社カタツムリワークスのブログ。技術・雑談・経営・告知を、カタツムリらしくゆっくり綴ります。'
+
+[markup]
+  [markup.goldmark.renderer]
+    unsafe = true
+  [markup.highlight]
+    style = 'github'
+    noClasses = true
+    lineNos = false
+    tabWidth = 2
