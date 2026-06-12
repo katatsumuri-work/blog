@@ -1,0 +1,108 @@
+/* 老人会風: 飾りすぎず、文章を読みやすく。serif・狭めの段組・古典的なリンク色。 */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 4rem;
+  font-family: Georgia, 'Times New Roman', 'Hiragino Mincho ProN', 'Yu Mincho',
+    serif;
+  line-height: 1.9;
+  color: #1a1a1a;
+  background: #fffef9;
+}
+
+a {
+  color: #0000ee;
+}
+a:visited {
+  color: #551a8b;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* ヘッダ */
+.site-header {
+  border-bottom: 2px solid #333;
+  padding-bottom: 0.75rem;
+  margin-bottom: 2rem;
+}
+.site-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-decoration: none;
+  color: #1a1a1a;
+}
+.site-nav {
+  margin-top: 0.4rem;
+  font-size: 0.95rem;
+}
+.site-nav a {
+  margin-right: 1rem;
+}
+
+.lead {
+  color: #444;
+}
+
+/* 記事一覧 */
+.post-list {
+  list-style: none;
+  padding: 0;
+}
+.post-list li {
+  padding: 0.45rem 0;
+  border-bottom: 1px dotted #ccc;
+}
+.post-list time {
+  color: #666;
+  font-size: 0.9rem;
+  margin-right: 0.75rem;
+}
+
+/* 記事ページ */
+.post-title,
+.page-title {
+  font-size: 1.6rem;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 0.4rem;
+}
+.post-meta {
+  color: #666;
+  font-size: 0.9rem;
+}
+.post-content {
+  margin-top: 1.5rem;
+}
+.post-content h2 {
+  border-left: 4px solid #2f6f4f;
+  padding-left: 0.6rem;
+}
+.post-content pre {
+  background: #f4f4f4;
+  padding: 0.8rem;
+  overflow-x: auto;
+  border: 1px solid #ddd;
+}
+.post-content code {
+  font-family: 'SF Mono', Consolas, 'Courier New', monospace;
+  font-size: 0.9em;
+}
+.post-content blockquote {
+  border-left: 3px solid #ccc;
+  margin-left: 0;
+  padding-left: 1rem;
+  color: #555;
+}
+
+/* フッタ */
+.site-footer {
+  margin-top: 4rem;
+  border-top: 1px solid #ccc;
+  padding-top: 1rem;
+  font-size: 0.85rem;
+  color: #666;
+}
