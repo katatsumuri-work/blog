@@ -1,11 +1,24 @@
 {{ define "main" }}
 <p class="lead">{{ .Site.Params.description }}</p>
+{{ $posts := where .Site.RegularPages "Section" "posts" }}
+{{ $paginator := .Paginate $posts }}
 <ul class="post-list">
-  {{ range (where .Site.RegularPages "Section" "posts") }}
+  {{ range $paginator.Pages }}
   <li>
     <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2006-01-02" }}</time>
     <a href="{{ .RelPermalink }}">{{ .Title }}</a>
   </li>
   {{ end }}
 </ul>
+{{ if gt $paginator.TotalPages 1 }}
+<nav class="pager" aria-label="ページ送り">
+  {{ if $paginator.HasPrev }}
+    <a class="pager__prev" href="{{ $paginator.Prev.URL }}">← 新しい記事</a>
+  {{ else }}<span></span>{{ end }}
+  <span class="pager__status">{{ $paginator.PageNumber }} / {{ $paginator.TotalPages }}</span>
+  {{ if $paginator.HasNext }}
+    <a class="pager__next" href="{{ $paginator.Next.URL }}">古い記事 →</a>
+  {{ else }}<span></span>{{ end }}
+</nav>
+{{ end }}
 {{ end }}
