@@ -12,5 +12,12 @@
   <div class="post-content">
     {{ .Content }}
   </div>
+  {{- with .GetTerms "tags" }}
+  <p class="post-tags">
+    {{- range . }}
+    <a class="tag" href="{{ .RelPermalink }}">#{{ .Title }}</a>
+    {{- end }}
+  </p>
+  {{- end }}
 </article>
 {{ end }}
