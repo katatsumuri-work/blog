@@ -5,6 +5,11 @@ hasCJKLanguage = true
 title = 'カタツムリワークス ブログ'
 enableRobotsTXT = true
 
+# 一覧・タームの見出しを自動で先頭大文字化しない。
+# タグは小文字スラッグ（github-actions 等）でそのまま表示したいため。
+# カテゴリは content/categories/*/_index.md の title が優先される。
+capitalizeListTitles = false
+
 # ホーム等の一覧は 1 ページ 14 件でページ送り。
 [pagination]
   pagerSize = 14

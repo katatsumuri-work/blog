@@ -98,6 +98,18 @@ a:hover {
   color: #555;
 }
 
+/* 記事のタグ */
+.post-tags {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px dotted #ccc;
+  font-size: 0.9rem;
+}
+.post-tags .tag {
+  margin-right: 0.6rem;
+  white-space: nowrap;
+}
+
 /* ページ送り */
 .pager {
   display: flex;
