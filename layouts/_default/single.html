@@ -3,9 +3,9 @@
   <h1 class="post-title">{{ .Title }}</h1>
   <p class="post-meta">
     <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2006年1月2日" }}</time>
-    {{- with .Params.categories }} ・
+    {{- with .GetTerms "categories" }} ・
       {{- range . }}
-        <a href="{{ (printf "categories/%s/" (urlize .)) | relURL }}">{{ . }}</a>
+        <a href="{{ .RelPermalink }}">{{ .Title }}</a>
       {{- end }}
     {{- end }}
   </p>

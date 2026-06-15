@@ -19,7 +19,7 @@ enableRobotsTXT = true
   tag = 'tags'
 
 [params]
-  description = '合同会社カタツムリワークスのブログ。技術・雑談・経営・告知を、カタツムリらしくゆっくり綴ります。'
+  description = '合同会社カタツムリワークスのブログ。技術のことも雑談も、カタツムリらしくゆっくり綴ります。'
 
 [markup]
   [markup.goldmark.renderer]
