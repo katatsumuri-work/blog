@@ -1,0 +1,65 @@
+name: Deploy to Firebase Hosting
+
+# main が更新されたとき、および毎日 1 回、Hugo をビルドして Firebase Hosting に出す。
+#
+# 日次実行がある理由:
+#   Hugo は既定で「未来日の記事」をビルドから除外する。記事を先に書いて date を
+#   未来にしておくと、その日が来るまで公開されない。ただし「その日にビルドする人」が
+#   必要で、push 契機だけだと未来日の記事が永遠に出ない。そのための日次ビルド。
+#
+# 認証:
+#   Workload Identity 連携（鍵レス）。SA の JSON キーは発行しておらず、
+#   GitHub 側に秘密情報は置いていない。下の 2 つの値は秘密ではないので直書きしている。
+#   設定の実体は infra repo の gcp/github-actions-wif を参照。
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # UTC 00:05 = JST 09:05。記事の date は 09:00+09:00 なので、その直後に拾う。
+    - cron: '5 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # WIF で OIDC トークンを発行するために必要
+
+# デプロイ先は 1 つなので、同時に走らせない。
+concurrency:
+  group: deploy-blog
+  cancel-in-progress: false
+
+env:
+  HUGO_VERSION: '0.161.1'
+  GCP_PROJECT: katatsumuri-work
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Hugo (extended)
+        run: |
+          set -euo pipefail
+          url="https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-amd64.tar.gz"
+          curl -sSL "$url" | tar -xz -C /usr/local/bin hugo
+          hugo version
+
+      - name: Build
+        run: hugo --gc --minify
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      - name: Deploy to Firebase Hosting
+        run: |
+          npx --yes firebase-tools deploy \
+            --only hosting \
+            --project "${GCP_PROJECT}" \
+            --non-interactive \
+            --message "${GITHUB_SHA::7} (${GITHUB_EVENT_NAME})"
