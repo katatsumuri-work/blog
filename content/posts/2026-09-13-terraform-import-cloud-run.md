@@ -25,7 +25,7 @@ draft: false
 
 state は GCS に置きます。バケットだけは Terraform の外で一度作ります（state を置く場所を state で管理できないため）。
 
-```toml
+```hcl
 terraform {
   backend "gcs" {
     bucket = "katatsumuri-work-tfstate"
