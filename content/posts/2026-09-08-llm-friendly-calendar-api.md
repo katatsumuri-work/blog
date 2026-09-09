@@ -1,7 +1,7 @@
 ---
 title: '消費者が LLM な API を設計する ― 稼働表のための /calendar と isBusinessDay'
 slug: 'llm-friendly-calendar-api'
-date: 2026-07-03T09:00:00+09:00
+date: 2026-09-08T09:00:00+09:00
 categories: ['tech']
 tags: ['api', 'llm', 'cloudflare-workers', 'hono']
 draft: false

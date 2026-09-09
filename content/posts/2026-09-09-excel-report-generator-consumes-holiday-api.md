@@ -1,7 +1,7 @@
 ---
 title: '祝日 API を"消費"して稼働報告書を自動生成する ― Excel の数式を殺さずに祝日対応を差し込む'
 slug: 'excel-report-generator-consumes-holiday-api'
-date: 2026-07-04T09:00:00+09:00
+date: 2026-09-09T09:00:00+09:00
 categories: ['tech']
 tags: ['python', 'openpyxl', 'excel', 'api']
 draft: false
