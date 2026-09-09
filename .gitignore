@@ -3,5 +3,8 @@
 /resources/_gen/
 /.hugo_build.lock
 
+# Firebase デプロイキャッシュ
+/.firebase/
+
 # OS
 .DS_Store
