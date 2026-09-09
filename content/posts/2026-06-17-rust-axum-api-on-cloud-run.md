@@ -108,7 +108,7 @@ gcloud run deploy api \
   --port 8080 --memory 256Mi --min-instances 0 --max-instances 3
 ```
 
-`*.run.app` の URL で全エンドポイント（`/health`・`/company`・`/docs` など）が応答することを確認してから、カスタムドメイン `api.katatsumuri.work` をドメインマッピングで割り当てました。マッピングで提示された **CNAME（`api` → `ghs.googlehosted.com.`）をムームー側に 1 本追加するだけ**で、apex も MX も触りません（この設計の理由は前述の別記事に書いています）。
+`*.run.app` の URL で全エンドポイント（`/health`・`/company`・`/docs` など）が応答することを確認してから、カスタムドメイン `api.katatsumuri.work` をドメインマッピングで割り当てました。マッピングで提示された **CNAME（`api` → `ghs.googlehosted.com.`）をムームードメイン側に 1 本追加するだけ**で、apex も MX も触りません（この設計の理由は前述の別記事に書いています）。
 
 ### 人柱ポイント3：domain-mappings は GA に無い
 
