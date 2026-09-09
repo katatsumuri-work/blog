@@ -36,10 +36,10 @@ npx firebase-tools deploy --only hosting --project katatsumuri-work
 
 ### カスタムドメイン（サブドメイン / 外部 DNS）
 
-`katatsumuri.work` の DNS はムームー管理で Cloudflare に移せないため、apex ではなく
+`katatsumuri.work` の DNS はムームードメイン管理で Cloudflare に移せないため、apex ではなく
 **サブドメイン**で運用する。Firebase コンソールの Hosting → カスタムドメインで
 `blog.katatsumuri.work` を追加すると **CNAME**（と確認用 TXT）が提示されるので、
-それをムームー DNS に追加する。**apex の A / MX は触らない＝メール無傷**。SSL は Firebase が自動発行。
+それをムームードメイン DNS に追加する。**apex の A / MX は触らない＝メール無傷**。SSL は Firebase が自動発行。
 
 ## 記事の追加
 

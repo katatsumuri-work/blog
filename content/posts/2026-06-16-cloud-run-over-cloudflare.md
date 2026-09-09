@@ -18,7 +18,7 @@ draft: false
 
 これだけなら Cloudflare Workers は有力候補です。エッジで動いて速いし、無料枠も広い。最初に検討したのも自然な流れでした。
 
-## 制約：DNS はムームー固定、メールは止められない
+## 制約：DNS はムームードメイン固定、メールは止められない
 
 ところが、`katatsumuri.work` には外せない事情が 2 つありました。
 
@@ -35,19 +35,19 @@ draft: false
 
 参考: [Cloudflare Workers - Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)
 
-つまり `katatsumuri.work` のネームサーバーを「ムームー → Cloudflare」に移管することになります。すると、これまでムームーで持っていた **すべての DNS レコードを Cloudflare 側で作り直す**ことになり、その中には Google Workspace の **MX レコードも含まれます**。
+つまり `katatsumuri.work` のネームサーバーを「ムームードメイン → Cloudflare」に移管することになります。すると、これまでムームードメインで持っていた **すべての DNS レコードを Cloudflare 側で作り直す**ことになり、その中には Google Workspace の **MX レコードも含まれます**。
 
 移管のタイミングや設定ミスで MX が一瞬でも欠けると、メールが届かなくなります。「速いエッジ実行」と引き換えにこのリスクを負うのは、さすがに見合わないなと判断しました。`api.` という一つのサブドメインのために、ドメイン全体の DNS を引っ越すのは大げさすぎる、という感覚です。
 
 ## Cloud Run を選んだ理由：DNS を動かさなくていい
 
-一方、Cloud Run の **ドメインマッピング**は、**外部 DNS をそのまま使えます**。マッピングを作成すると「この DNS レコードを追加してください」と提示されるので、それを**ムームー側に足すだけ**です。サブドメインなら CNAME（`ghs.googlehosted.com.` 宛て）を 1 本追加すれば終わりで、ネームサーバーの移管は要りません。
+一方、Cloud Run の **ドメインマッピング**は、**外部 DNS をそのまま使えます**。マッピングを作成すると「この DNS レコードを追加してください」と提示されるので、それを**ムームードメイン側に足すだけ**です。サブドメインなら CNAME（`ghs.googlehosted.com.` 宛て）を 1 本追加すれば終わりで、ネームサーバーの移管は要りません。
 
 参考: [Cloud Run - カスタム ドメインのマッピング](https://cloud.google.com/run/docs/mapping-custom-domains)
 
 これなら：
 
-- ネームサーバーはムームーのまま → **MX レコードは一切触らない**ので、メールは無傷
+- ネームサーバーはムームードメインのまま → **MX レコードは一切触らない**ので、メールは無傷
 - 足すのは `api.` の CNAME 1 本だけ → 既存の DNS への影響が局所的
 - TLS 証明書は Google マネージドで自動発行・更新
 
@@ -59,7 +59,7 @@ Terraform で Cloud Run サービスとドメインマッピングを定義し�
 
 ```hcl
 # カスタムドメインのマッピング（api.katatsumuri.work）
-# DNS（ムームー）側の CNAME 追加は Terraform 管理外（手動）。
+# DNS（ムームードメイン）側の CNAME 追加は Terraform 管理外（手動）。
 resource "google_cloud_run_domain_mapping" "api" {
   location = var.region
   name     = var.domain # api.katatsumuri.work
@@ -74,16 +74,16 @@ resource "google_cloud_run_domain_mapping" "api" {
 }
 ```
 
-マッピングを作ると、登録すべき DNS レコードが `status` に返ってきます。これを `outputs.tf` で拾って、その値をムームーの DNS 設定に手で入れる、という運用にしています。
+マッピングを作ると、登録すべき DNS レコードが `status` に返ってきます。これを `outputs.tf` で拾って、その値をムームードメインの DNS 設定に手で入れる、という運用にしています。
 
 ```hcl
 output "domain_dns_records" {
-  description = "ムームー DNS に登録すべきレコード（CNAME など）"
+  description = "ムームードメイン DNS に登録すべきレコード（CNAME など）"
   value       = google_cloud_run_domain_mapping.api.status[0].resource_records
 }
 ```
 
-DNS レコードの登録だけは Terraform の管理外（ムームーは Terraform プロバイダを使っていないので手動）ですが、「何を登録すればいいか」は出力で分かるようにしてあります。
+DNS レコードの登録だけは Terraform の管理外（ムームードメインは Terraform プロバイダを使っていないので手動）ですが、「何を登録すればいいか」は出力で分かるようにしてあります。
 
 ちなみに会社サイト本体（apex の `katatsumuri.work`）は Firebase Hosting に載せていますが、これも「外部 DNS のまま A レコードを足すだけで済む」という同じ理由で選んでいます。
 
