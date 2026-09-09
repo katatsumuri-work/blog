@@ -1,7 +1,7 @@
 ---
 title: 'ロジックは API、CLI は薄く ― 祝日 API に被せる Rust 製クライアント hare の作り方と配布'
 slug: 'thin-rust-cli-hare-over-holiday-api'
-date: 2026-07-05T09:00:00+09:00
+date: 2026-09-10T09:00:00+09:00
 categories: ['tech']
 tags: ['rust', 'cli', 'cloudflare-workers', 'clap']
 draft: false
