@@ -46,7 +46,7 @@ export default defineConfig({
 
 ## 人柱: `<style is:global>` がビルドエラーになる
 
-書き始めてすぐ、`.astro` ファイルの中でグローバル CSS を書こうとして詰まりました。
+書き始めてすぐ、`.astro` ファイルの中でグローバル CSS を書こうとして詰まりました。Astro は **5.7 系**です。
 
 ```
 Expected } but found is
@@ -65,6 +65,8 @@ import '../styles/global.css';
 考えてみれば、こちらのほうが素直です。`.astro` の中に長い CSS を抱えるより、`src/styles/global.css` に置いて import するほうが見通しがいい。**エラーに押し出される形で、結果的にまともな構成になりました**。
 
 同じエラーで止まっている人は、`is:global` にこだわらず外部ファイルへ出すのが早いと思います。
+
+参考: [Astro - Styling & CSS（Global Styles）](https://docs.astro.build/en/guides/styling/#global-styles)
 
 ## Firebase Hosting をマルチサイトで使う
 
