@@ -2,7 +2,7 @@
 
 合同会社カタツムリワークスのブログ（Hugo・テーマなし・老人会風）。
 
-- 本番: https://blog.katatsumuri.work（Firebase Hosting・予定）
+- 本番: https://blog.katatsumuri.work（Firebase Hosting）
 - 記事 URL: `/:year/:month/:day/:slug/`（日付階層）
 
 ## 開発
@@ -11,6 +11,35 @@
 hugo server -D          # http://localhost:1313（ドラフトも表示）
 hugo --gc --minify      # public/ に本番ビルド（CI/デプロイ前チェック）
 ```
+
+## デプロイ（Firebase Hosting）
+
+ホスティングは GCP プロジェクト `katatsumuri-work`（web / Cloud Run と同一）の Firebase を使う。
+web は既定サイト（`katatsumuri.work`）、blog は `katatsumuri-blog` サイトに分けている。
+どのサイトに出すかは `firebase.json` の `site` で固定しているので、デプロイ時の指定は不要。
+
+初回のみ:
+
+```sh
+npx firebase-tools login                                        # 対話ログイン（katatsumuri アカウント）
+npx firebase-tools hosting:sites:create katatsumuri-blog        # blog 用サイトを作成
+```
+
+デプロイ:
+
+```sh
+hugo --gc --minify                                              # public/ にビルド
+npx firebase-tools deploy --only hosting --project katatsumuri-work
+```
+
+認証が切れた場合は `npx firebase-tools login --reauth` で入り直す。
+
+### カスタムドメイン（サブドメイン / 外部 DNS）
+
+`katatsumuri.work` の DNS はムームー管理で Cloudflare に移せないため、apex ではなく
+**サブドメイン**で運用する。Firebase コンソールの Hosting → カスタムドメインで
+`blog.katatsumuri.work` を追加すると **CNAME**（と確認用 TXT）が提示されるので、
+それをムームー DNS に追加する。**apex の A / MX は触らない＝メール無傷**。SSL は Firebase が自動発行。
 
 ## 記事の追加
 
