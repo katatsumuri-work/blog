@@ -70,7 +70,17 @@ allowBuilds:
 
 ワークスペースを切っていないリポジトリでも、`pnpm-workspace.yaml` を置けば読まれます。ファイル名から「モノレポ用の設定」に見えますが、**pnpm の設定ファイルとして機能する**ということのようです。ここも直感に反しました。
 
+設定を足したら、**`pnpm install` をやり直して反映させます**。既にインストール済みの状態で設定だけ書いても、ブロックされたままです。
+
+いまブロックされているものは `pnpm ignored-builds` で確認できます。
+
+```sh
+pnpm ignored-builds
+```
+
 これで `install` の警告が消え、`build` も通るようになりました。
+
+参考: [pnpm ignored-builds](https://pnpm.io/cli/ignored-builds)
 
 ## 対話的に許可することもできる
 
