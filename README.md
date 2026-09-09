@@ -25,12 +25,31 @@ npx firebase-tools login                                        # 対話ログ�
 npx firebase-tools hosting:sites:create katatsumuri-blog        # blog 用サイトを作成
 ```
 
-デプロイ:
+デプロイは **main への push で自動実行**されます（`.github/workflows/deploy.yml`）。
+手元から出したい場合は次のとおり。
 
 ```sh
 hugo --gc --minify                                              # public/ にビルド
 npx firebase-tools deploy --only hosting --project katatsumuri-work
 ```
+
+### 自動デプロイ（GitHub Actions）
+
+3 つの契機で走ります。
+
+| 契機 | 目的 |
+|---|---|
+| `push`（main） | 記事をマージしたら即反映 |
+| `schedule`（毎日 JST 09:05） | **未来日の記事を当日に公開するため** |
+| `workflow_dispatch` | 手動で即時デプロイ |
+
+日次実行があるのは Hugo の挙動のためです。Hugo は既定で未来日の記事をビルドから
+除外するので、`date` を先の日付にして書き溜めておけますが、**その日にビルドする人が
+必要**になります。push 契機だけだと未来日の記事がいつまでも出ません。
+
+認証は Workload Identity 連携（鍵レス）で、GitHub 側に秘密情報は置いていません。
+`vars.WIF_PROVIDER` と `vars.WIF_SERVICE_ACCOUNT` はどちらも秘密ではない値です。
+設定の実体は infra repo の `gcp/github-actions-wif` にあります。
 
 認証が切れた場合は `npx firebase-tools login --reauth` で入り直す。
 
