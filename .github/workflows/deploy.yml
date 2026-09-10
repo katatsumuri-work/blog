@@ -16,8 +16,17 @@ on:
   push:
     branches: [main]
   schedule:
-    # UTC 00:05 = JST 09:05。記事の date は 09:00+09:00 なので、その直後に拾う。
-    - cron: '5 0 * * *'
+    # UTC 00:23 = JST 09:23。記事の date は 09:00+09:00 なので、その直後に拾う。
+    #
+    # 「毎時 0 分ちょうど」を避けているのは意図的。GitHub が明言している:
+    #   The schedule event can be delayed during periods of high loads of GitHub
+    #   Actions workflow runs. High load times include the start of every hour.
+    #   If the load is sufficiently high enough, some queued jobs may be dropped.
+    #   To decrease the chance of delay, schedule your workflow to run at a
+    #   different time of the hour.
+    # 実際 2026-09-10 に cron '5 0 * * *' が 3 時間半経っても発火せず、その日の
+    # 記事が公開されないまま止まった。遅延ではなく drop された可能性が高い。
+    - cron: '23 0 * * *'
   workflow_dispatch:
 
 permissions:
