@@ -1,0 +1,60 @@
+# Hugo でビルドして Firebase Hosting に出す。
+#
+# GitHub Actions の schedule が当てにならず、未来日記事の当日公開が
+# 成立しなかったため、公開経路を GCP 内に移した。
+# 経緯: blog の記事 2026-09-19-scheduled-workflow-silently-stops.md
+#
+# 呼ばれ方は 3 つ。
+#   - push（main）        … Cloud Build の GitHub 連携トリガー
+#   - 日次                … Cloud Scheduler（未来日記事を当日に公開するため）
+#   - 手動                … gcloud builds triggers run blog-deploy --branch=main
+#
+# 認証は Cloud Build のサービスアカウント（ADC）。長期鍵は使わない。
+
+substitutions:
+  _HUGO_VERSION: '0.161.1'
+
+steps:
+  # Hugo は cloud-builders に無いので公式リリースを取得する。
+  # extended 版が要る（テーマは自前だが、将来 SCSS を使う可能性を残す）。
+  - id: install-hugo
+    name: gcr.io/cloud-builders/curl
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        url="https://github.com/gohugoio/hugo/releases/download/v${_HUGO_VERSION}/hugo_extended_${_HUGO_VERSION}_linux-amd64.tar.gz"
+        curl -sSL "$url" | tar -xz -C /workspace hugo
+        /workspace/hugo version
+
+  # 未来日の記事は既定で除外される（buildFuture=false）。
+  # それが当日公開の仕組みなので、--buildFuture は付けない。
+  - id: build
+    name: gcr.io/cloud-builders/curl
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        /workspace/hugo --gc --minify
+
+  # firebase.json の site 指定で katatsumuri-blog に出る。
+  # web（既定サイト）へ誤爆しない。
+  - id: deploy
+    name: gcr.io/cloud-builders/npm
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        npx --yes firebase-tools deploy \
+          --only hosting \
+          --project "$PROJECT_ID" \
+          --non-interactive \
+          --message "${SHORT_SHA:-manual} (cloud-build)"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 900s
