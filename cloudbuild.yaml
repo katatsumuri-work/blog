@@ -39,8 +39,12 @@ steps:
 
   # firebase.json の site 指定で katatsumuri-blog に出る。
   # web（既定サイト）へ誤爆しない。
+  #
+  # ベースイメージに注意。gcr.io/cloud-builders/npm は Node が v19 で、
+  # firebase-tools が動かない（incompatible with Node.js v19.0.0 で落ちる）。
+  # cloud-builders のイメージは全体的に古いので、公式イメージを使う。
   - id: deploy
-    name: gcr.io/cloud-builders/npm
+    name: node:22-slim
     entrypoint: bash
     args:
       - -c
