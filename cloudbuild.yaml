@@ -17,27 +17,25 @@ substitutions:
 steps:
   # Hugo は cloud-builders に無いので公式リリースを取得する。
   # extended 版が要る（テーマは自前だが、将来 SCSS を使う可能性を残す）。
-  - id: install-hugo
-    name: gcr.io/cloud-builders/curl
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        set -euo pipefail
-        url="https://github.com/gohugoio/hugo/releases/download/v${_HUGO_VERSION}/hugo_extended_${_HUGO_VERSION}_linux-amd64.tar.gz"
-        curl -sSL "$url" | tar -xz -C /workspace hugo
-        /workspace/hugo version
-
-  # 未来日の記事は既定で除外される（buildFuture=false）。
-  # それが当日公開の仕組みなので、--buildFuture は付けない。
+  #
+  # ベースイメージに注意。gcr.io/cloud-builders/* は glibc が古く、
+  # hugo extended が動かない（GLIBC_2.33 / GLIBCXX_3.4.29 not found で落ちる）。
+  # extended はネイティブライブラリに依存するので、新しめのディストロが要る。
+  # ビルドと取得を 1 ステップにまとめているのは、/workspace を跨ぐより素直なため。
   - id: build
-    name: gcr.io/cloud-builders/curl
+    name: debian:12-slim
     entrypoint: bash
     args:
       - -c
       - |
         set -euo pipefail
-        /workspace/hugo --gc --minify
+        apt-get update -qq && apt-get install -y -qq --no-install-recommends curl ca-certificates
+        url="https://github.com/gohugoio/hugo/releases/download/v${_HUGO_VERSION}/hugo_extended_${_HUGO_VERSION}_linux-amd64.tar.gz"
+        curl -sSL "$url" | tar -xz -C /usr/local/bin hugo
+        hugo version
+        # 未来日の記事は既定で除外される（buildFuture=false）。
+        # それが当日公開の仕組みなので、--buildFuture は付けない。
+        hugo --gc --minify
 
   # firebase.json の site 指定で katatsumuri-blog に出る。
   # web（既定サイト）へ誤爆しない。
