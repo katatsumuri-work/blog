@@ -25,33 +25,53 @@ npx firebase-tools login                                        # 対話ログ�
 npx firebase-tools hosting:sites:create katatsumuri-blog        # blog 用サイトを作成
 ```
 
-デプロイは **main への push で自動実行**されます（`.github/workflows/deploy.yml`）。
-手元から出したい場合は次のとおり。
+デプロイは **main への push で自動実行**されます。ビルド定義は `cloudbuild.yaml`、
+動かしているのは Cloud Build です。
+
+### 自動デプロイ（Cloud Build）
+
+3 つの契機で走ります。どれも同じトリガー（`blog-deploy`）を使います。
+
+| 契機 | 目的 |
+|---|---|
+| `push`（main） | 記事をマージしたら即反映 |
+| 日次（Cloud Scheduler・JST 09:05） | **未来日の記事を当日に公開するため** |
+| 手動 | 即時デプロイ |
+
+```sh
+# 手動で出す
+gcloud builds triggers run blog-deploy --branch=main --project=katatsumuri-work
+
+# 実行状況
+gcloud builds list --project=katatsumuri-work --limit=5
+```
+
+日次実行があるのは Hugo の挙動のためです。Hugo は既定で未来日の記事をビルドから
+除外するので、`date` を先の日付にして書き溜めておけますが、**その日にビルドする人が
+必要**になります。push 契機だけだと未来日の記事がいつまでも出ません。
+
+認証は Cloud Build のサービスアカウント（ADC）で、**長期鍵はどこにも置いていません**。
+設定の実体は infra repo の `gcp/cloud-build-blog-deploy` にあります。
+
+### なぜ GitHub Actions をやめたか
+
+もともと GitHub Actions の `schedule` で日次ビルドを回していましたが、**発火しませんでした**。
+
+- 2026-09-09 に組んでから 09-11 まで 3 日連続で `schedule` の実行が 0 件
+- 30 分ごとに回している別のワークフローでも、実行率は 1 日 48 回の想定に対して 6 回程度
+- cron を「毎時 0 分帯」から外しても改善せず
+
+公開は「その日に出ないと意味がない」ので、GitHub の混雑から切り離して GCP 内に寄せました。
+詳しくは記事 [GitHub Actions の cron が、ある日から 1 日 48 回中 6 回しか動かなくなった](https://blog.katatsumuri.work/2026/09/19/scheduled-workflow-silently-stops/) に書いています。
+
+### 手元から直接デプロイする（緊急時）
 
 ```sh
 hugo --gc --minify                                              # public/ にビルド
 npx firebase-tools deploy --only hosting --project katatsumuri-work
 ```
 
-### 自動デプロイ（GitHub Actions）
-
-3 つの契機で走ります。
-
-| 契機 | 目的 |
-|---|---|
-| `push`（main） | 記事をマージしたら即反映 |
-| `schedule`（毎日 JST 09:05） | **未来日の記事を当日に公開するため** |
-| `workflow_dispatch` | 手動で即時デプロイ |
-
-日次実行があるのは Hugo の挙動のためです。Hugo は既定で未来日の記事をビルドから
-除外するので、`date` を先の日付にして書き溜めておけますが、**その日にビルドする人が
-必要**になります。push 契機だけだと未来日の記事がいつまでも出ません。
-
-認証は Workload Identity 連携（鍵レス）で、GitHub 側に秘密情報は置いていません。
-`vars.WIF_PROVIDER` と `vars.WIF_SERVICE_ACCOUNT` はどちらも秘密ではない値です。
-設定の実体は infra repo の `gcp/github-actions-wif` にあります。
-
-認証が切れた場合は `npx firebase-tools login --reauth` で入り直す。
+認証が切れた場合は `npx firebase-tools login --reauth` で入り直します。
 
 ### カスタムドメイン（サブドメイン / 外部 DNS）
 
