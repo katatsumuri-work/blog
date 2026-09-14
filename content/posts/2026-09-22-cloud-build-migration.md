@@ -63,6 +63,7 @@ draft: false
 # cloudbuild.yaml（抜粋）
 substitutions:
   _HUGO_VERSION: '0.161.1'
+  _FIREBASE_TOOLS_VERSION: '15.30.0'
 
 steps:
   - id: build
@@ -73,8 +74,13 @@ steps:
       - |
         set -euo pipefail
         apt-get update -qq && apt-get install -y -qq --no-install-recommends curl ca-certificates
-        url="https://github.com/gohugoio/hugo/releases/download/v${_HUGO_VERSION}/hugo_extended_${_HUGO_VERSION}_linux-amd64.tar.gz"
-        curl -sSL "$url" | tar -xz -C /usr/local/bin hugo
+        base="https://github.com/gohugoio/hugo/releases/download/v${_HUGO_VERSION}"
+        tarball="hugo_extended_${_HUGO_VERSION}_linux-amd64.tar.gz"
+        workdir="$(mktemp -d)"
+        curl -sSLo "$workdir/$tarball"       "$base/$tarball"
+        curl -sSLo "$workdir/checksums.txt"  "$base/hugo_${_HUGO_VERSION}_checksums.txt"
+        ( cd "$workdir" && sha256sum --check --ignore-missing checksums.txt )
+        tar -xzf "$workdir/$tarball" -C /usr/local/bin hugo
         # 未来日の記事は既定で除外される。それが当日公開の仕組みなので
         # --buildFuture は付けない
         hugo --gc --minify
@@ -86,10 +92,15 @@ steps:
       - -c
       - |
         set -euo pipefail
-        npx --yes firebase-tools deploy --only hosting --project "$PROJECT_ID" --non-interactive
+        npx --yes "firebase-tools@${_FIREBASE_TOOLS_VERSION}" deploy \
+          --only hosting --project "$PROJECT_ID" --non-interactive
 ```
 
-ちなみにこの抜粋、**コピーして使うには 2 つ足りていません**。Hugo のアーカイブをチェックサム検証せずそのまま実行していますし、`firebase-tools` もバージョンを固定していないので毎回その時点の最新が降ってきます（記事に出てくる 15.30.0 は、移行したときにたまたま解決された版です）。手元のブログなので許容していますが、真似するなら足したほうがよさそうです。
+この 2 つは**最初は書いていませんでした**。Hugo のアーカイブは無検証でそのまま実行していましたし、`firebase-tools` も `npx --yes firebase-tools` で毎回その時点の最新が降ってくる状態です。この記事を書きながら気づいて足しました。
+
+とくに後者は間抜けで、**この移行で踏んだ 2 つ目の失敗がまさに「firebase-tools が Node v19 に対応していない」**でした。ランタイムのほうは固定したのに、CLI のほうは野放しのままだったわけです。ある朝いきなり壊れる余地を残していました。
+
+`sha256sum --check --ignore-missing` は、改ざんされていても対象が無くても非ゼロで落ちます。`--ignore-missing` は「検証対象が 1 つも無ければ成功」にはならないので、そこは安心してよさそうです。
 
 Cloud Build が展開するのは、`$PROJECT_ID` のような**組み込みの置換変数**と、`_` で始まる**ユーザー定義の置換変数**（ここでは `$_HUGO_VERSION`）だけです。`$url` はどちらにも当たらないので、そのまま bash に渡ってシェル変数として解決されます。逆にいうと、**大文字ならなんでも展開されるわけではありません**。ユーザー定義のほうは `_[A-Z0-9_]+`（アンダースコア始まりの大文字英数）が条件なので、そこだけ覚えておけばよさそうです。
 
