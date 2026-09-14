@@ -43,13 +43,17 @@ draft: false
 
 前回の記事では「外部のスケジューラから `workflow_dispatch` を叩く形にするのが筋」と書きました。実際に手を動かしてみたら、そこで止まりませんでした。
 
-**`workflow_dispatch` を叩く**なら、既存のワークフローをそのまま使えます。実装としては一番小さくて済みます。ただし **PAT（Personal Access Token）が必要**です。Workload Identity 連携は「GitHub Actions から GCP へ」の向きの仕組みで、**逆向き（GCP から GitHub API を叩く）には使えません**。GitHub 側が Google の OIDC トークンを受け付けないからです。GitHub App を挟む手もありますが、そちらもアプリの秘密鍵を持つことになるので、長期鍵が消えるわけではありません。せっかく鍵レスで済んでいたものを戻すのは惜しいなと思いました。
+**`workflow_dispatch` を叩く**なら、既存のワークフローをそのまま使えます。実装としては一番小さくて済みます。ただし **GitHub 側の認証情報が必要**です。Workload Identity 連携は「GitHub Actions から GCP へ」の向きの仕組みで、**逆向き（GCP から GitHub API を叩く）には使えません**。GitHub 側が Google の OIDC トークンを受け付けないからです。
 
-参考: [GitHub Docs - Authenticating to the REST API](https://docs.github.com/en/rest/authentication/authenticating-to-the-rest-api)（GitHub API の認証手段は PAT / GitHub App / `GITHUB_TOKEN` に限られます） ／ [Workload Identity 連携](https://cloud.google.com/iam/docs/workload-identity-federation)（外部 ID から **Google Cloud のリソース**にアクセスするための仕組みです）
+選択肢は PAT（Personal Access Token）・GitHub App のトークン・OAuth token あたりで、最小構成なら PAT です。GitHub App にしても、今度はアプリの秘密鍵を持つことになります。**どれを選んでも、長期的な秘密がひとつ増える**のは変わりません。せっかく鍵レスで済んでいたものを戻すのは惜しいなと思いました。
+
+参考: [GitHub Docs - Create a workflow dispatch event](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event) ／ [Workload Identity 連携](https://cloud.google.com/iam/docs/workload-identity-federation)（外部 ID から **Google Cloud のリソース**にアクセスするための仕組みです）
 
 それに、この案だと**結局 GitHub Actions の実行に依存します**。混雑の影響を完全には切れません。
 
-そこで **Cloud Build でビルドからデプロイまでやる**ことにしました。GitHub は `git clone` にしか使いません。認証は Cloud Build のサービスアカウントで完結します。ビルド環境では ADC（Application Default Credentials）として自動で拾われるので、鍵ファイルを渡す必要がありません。
+そこで **Cloud Build でビルドからデプロイまでやる**ことにしました。日次の経路では GitHub Actions も GitHub API も使わず、GitHub は**ソースの取得先**として使うだけになります。デプロイの認証は Cloud Build のサービスアカウントで完結します。ビルド環境では ADC（Application Default Credentials）として自動で拾われるので、鍵ファイルを渡す必要がありません。
+
+ただし GitHub と無縁になるわけではありません。push トリガーとソース取得のために、**Cloud Build GitHub App のインストールとリポジトリ接続**は要ります。ここは Terraform の管理外で、事前に一度だけ手作業が必要でした。
 
 ## 構成
 
@@ -85,15 +89,15 @@ steps:
         npx --yes firebase-tools deploy --only hosting --project "$PROJECT_ID" --non-interactive
 ```
 
-Cloud Build が展開するのは、`$PROJECT_ID` のような**組み込みの置換変数**と、`_` で始まる**ユーザー定義の置換変数**（ここでは `$_HUGO_VERSION`）だけです。`$url` はどちらにも当たらないので、そのまま bash に渡ってシェル変数として解決されます。逆にいうと、**大文字ならなんでも展開されるわけではありません**。ユーザー定義のほうは `_` 始まりが必須なので、そこだけ覚えておけばよさそうです。
+Cloud Build が展開するのは、`$PROJECT_ID` のような**組み込みの置換変数**と、`_` で始まる**ユーザー定義の置換変数**（ここでは `$_HUGO_VERSION`）だけです。`$url` はどちらにも当たらないので、そのまま bash に渡ってシェル変数として解決されます。逆にいうと、**大文字ならなんでも展開されるわけではありません**。ユーザー定義のほうは `_[A-Z0-9_]+`（アンダースコア始まりの大文字英数）が条件なので、そこだけ覚えておけばよさそうです。
 
-トリガーは 1 つで、**push・日次・手動のすべてを受けます**。Terraform 側で定義しているのはトリガー、サービスアカウント、Cloud Scheduler のジョブだけです。
+トリガーは 1 つで、**push・日次・手動のすべてを受けます**。Terraform 側では、必要な API の有効化・IAM・サービスアカウント・トリガー・Cloud Scheduler のジョブを定義しています。
 
 参考: [Cloud Build - 置換変数の値を代入する](https://cloud.google.com/build/docs/configuring-builds/substitute-variable-values) ／ [ビルドトリガーの作成と管理](https://cloud.google.com/build/docs/automating-builds/create-manage-triggers)
 
-## `gcr.io/cloud-builders/*` が古かった（2026 年 9 月時点）
+## 使った `cloud-builders` のイメージが古かった（2026 年 9 月時点）
 
-移行で 2 回落ちました。症状は別々でしたが、根っこはどちらも **`gcr.io/cloud-builders/*` のイメージが古いこと**でした。
+移行で 2 回落ちました。症状は別々でしたが、根っこはどちらも **使った `gcr.io/cloud-builders/*` イメージの実行環境が古いこと**でした。
 
 最初は Hugo の**実行**で止まりました。当時は取得と実行を別ステップに分けていたのですが、取得（`curl`）自体は通っていて、落ちたのはそのあとバイナリを起動したところです。
 
@@ -115,11 +119,11 @@ Please upgrade Node.js to version >=20.0.0 || >=22.0.0 || >=24.0.0
 
 今度は `gcr.io/cloud-builders/npm` の **Node が v19** でした。`node:22-slim` に変えています。
 
-**`cloud-builders` のイメージは更新が止まっています。** Node v19 は **2023 年 6 月に EOL** を迎えた版で、2026 年 9 月時点でもそれが載ったままでした（[リポジトリ](https://github.com/GoogleCloudPlatform/cloud-builders)の更新状況も同様です）。新しめのランタイムが要るものは、公式イメージを使うほうが早いと思います。
+言えるのは「**今回使った 2 つが古かった**」までで、`cloud-builders` 全体が放置されていると断じる材料は持っていません。公式ドキュメント上はいまも提供されているものです。ただ、Node v19 は **2023 年 6 月に EOL** を迎えた版で、2026 年 9 月時点でもそれが載ったままでした。新しめのランタイムが要るものは、最初から公式イメージを使うほうが早いと思います。
 
 参考: [Cloud Build - Cloud ビルダー](https://cloud.google.com/build/docs/cloud-builders)
 
-### 手元の docker で先に確かめる
+### 手元の Docker で先に確かめる
 
 2 回目からは、直す前に手元で確認するようにしました。
 
@@ -142,7 +146,7 @@ default = ["5 9 * * *"]   # JST 09:05
 
 **「23 分」は GitHub Actions 時代の名残**です。あちらは「毎時 0 分付近は混むから避けろ」と公式に書かれていたので分をずらしていました。**その作法を、移行先でも要るのか確かめないまま持ち込んでいました**。記事の `date` が 09:00 なので、素直に 09:05 にしました。
 
-2 本目も、起動の失敗は `retry_config` が 3 回まで拾うので重複していました。ビルド自体が失敗した場合は監視が拾います。**自動で直す枠は置かず、気づく枠に寄せる**という整理です。
+2 本目も、起動に失敗しても `retry_config` が初回失敗後に 3 回まで再試行するので、重複していました。ビルド自体が失敗した場合は監視が拾います。**自動で直す枠は置かず、気づく枠に寄せる**という整理です。
 
 参考: [Cloud Scheduler - cron ジョブのスケジュールを構成する](https://cloud.google.com/scheduler/docs/configuring/cron-job-schedules)
 
@@ -152,7 +156,7 @@ default = ["5 9 * * *"]   # JST 09:05
 
 > 監視をプライベートリポジトリに置いたのは 60 日ルールを避けるためで、障害ドメインを分けたことにはなっていません。
 
-そのとおりだったので、監視も Cloud Scheduler から叩く形にしました。**避けられていたのは 60 日ルールだけで、遅延のほうは避けられていなかった**わけです。
+そのとおりだったので、監視も Cloud Scheduler から叩く形にしました。**避けられていたのは 60 日ルールだけで、遅延のほうは避けられていなかった**からです。実際、監視を入れた翌日から 2 日続けて 5 時間近く遅れて動いていました。
 
 日次ビルドが 09:05、監視が **09:35**。ビルドは数分で終わるので、30 分あけておけば十分です。GitHub Actions の頃は遅延を見込んで 1 時間以上あけていましたが、ここまで詰められました。
 
@@ -160,7 +164,11 @@ default = ["5 9 * * *"]   # JST 09:05
 
 参考: [Cloud Scheduler の概要](https://cloud.google.com/scheduler/docs/overview)
 
-ここを移していなかったら、前の節の「ビルドが失敗しても監視が拾う」は成立していませんでした。**公開経路だけ移しても、気づく側が元の場所に残っていたら片手落ち**です。
+ここを移していなかったら、前の節の「ビルドが失敗しても監視が拾う」は成立していませんでした。監視が 5 時間遅れて動くなら、それは当日のうちに気づく仕組みとしては機能しません。
+
+ただ、**これで障害ドメインを分けたわけではありません**。むしろ逆で、公開も監視もいまは同じ Cloud Scheduler / Cloud Build に乗っています。GCP 側でまとめて転んだら、公開が止まったことに誰も気づけません。前回「障害ドメインを分けたことにはなっていません」と書いた状態から、**分離の度合いはむしろ下がっています**。
+
+意識的にそうしました。今いちばん困っているのは「日次が遅延・未発火で記事が出ないこと」で、その頻度に比べれば GCP がまるごと落ちる確率は低いと踏んだからです。**遅延リスクを取り除く代わりに、共倒れのリスクを受け入れた**という交換です。本当に分離したいなら、監視はまた別の場所（外形監視のサービスや dead man's switch）に置くことになります。そこは宿題として残っています。
 
 ## 結果
 
@@ -174,10 +182,11 @@ default = ["5 9 * * *"]   # JST 09:05
 |---|---|---|
 | 実行 | 3 日連続で発火せず | 予定どおり |
 | 手作業 | 毎朝の手動デプロイ | なし |
-| 秘密 | なし（WIF・鍵レス） | なし（ADC） |
-| GitHub 側の設定 | WIF provider / SA の紐付け | なし（`git clone` のみ） |
+| デプロイ認証の長期鍵 | なし（WIF） | なし（ADC） |
+| GitHub Actions 側の設定 | WIF provider / SA の紐付け | なし |
+| Cloud Build GitHub App | 不要 | 必要（手動で一度だけ接続） |
 
-変わらなかったのが「秘密」の行です。移行前の GitHub Actions も Workload Identity 連携を使っていて、長期鍵は置いていませんでした。**ここは移行の成果ではなく、悪化させずに済んだだけ**です。`workflow_dispatch` 案を採っていたら、PAT が復活していました。
+変わらなかったのが「デプロイ認証の長期鍵」の行です。移行前の GitHub Actions も Workload Identity 連携を使っていて、長期鍵は置いていませんでした。**ここは移行の成果ではなく、悪化させずに済んだだけ**です。`workflow_dispatch` 案を採っていたら、GitHub 側の認証情報が復活していました。なお、あとで触れる監視のほうは Slack の webhook を Secret Manager に持っているので、システム全体が秘密ゼロというわけではありません。
 
 ついでに気づいたこととして、**自分の認証が切れていても公開は回り続けます**。発火しなかった 3 日間は私が手で叩いて出していたので、`gcloud` や `npx firebase-tools` の認証切れがそのまま「今日は出ない」に直結していました。いまは自分の認証状態とブログの公開が無関係になっています。
 
@@ -196,6 +205,6 @@ default = ["5 9 * * *"]   # JST 09:05
 - 未来日で記事を仕込む運用は「**その日にビルドする仕組み**」への依存です。push 駆動では代替できません
 - Cloud Build でビルドからデプロイまでやると、GitHub は `git clone` にしか使わず、**鍵レスのまま移せます**（`workflow_dispatch` を叩く案だと PAT が復活します）
 - **`gcr.io/cloud-builders/*` は古い**ので、新しいランタイムが要るなら公式イメージのほうが早そうです。ただし Hugo の glibc エラーなら、その前に **extended が本当に要るか**を疑うほうが安上がりです
-- 直す前に **手元の docker で `--platform linux/amd64` を指定して確かめる**と、CI に投げて待つより速いです
+- 直す前に **手元の Docker で `--platform linux/amd64` を指定して確かめる**と、CI に投げて待つより速いです
 - **前のプラットフォームの作法を、確かめずに移行先へ持ち込まない**。根拠のない時刻指定が残ります
-- **公開経路と監視は一緒に移す**。気づく側が元の場所に残っていたら、障害ドメインを分けたことになりません
+- 公開経路と監視は**依存先を意識して選ぶ**。今回は両方 GCP に寄せて遅延リスクを消した代わりに、共倒れのリスクを受け入れています
