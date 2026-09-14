@@ -18,7 +18,7 @@ steps:
   # Hugo は cloud-builders に無いので公式リリースを取得する。
   # extended 版が要る（テーマは自前だが、将来 SCSS を使う可能性を残す）。
   #
-  # ベースイメージに注意。gcr.io/cloud-builders/* は glibc が古く、
+  # ベースイメージに注意。gcr.io/cloud-builders/curl は glibc が古く、
   # hugo extended が動かない（GLIBC_2.33 / GLIBCXX_3.4.29 not found で落ちる）。
   # extended はネイティブライブラリに依存するので、新しめのディストロが要る。
   # ビルドと取得を 1 ステップにまとめているのは、/workspace を跨ぐより素直なため。
@@ -42,7 +42,8 @@ steps:
   #
   # ベースイメージに注意。gcr.io/cloud-builders/npm は Node が v19 で、
   # firebase-tools が動かない（incompatible with Node.js v19.0.0 で落ちる）。
-  # cloud-builders のイメージは全体的に古いので、公式イメージを使う。
+  # 今回使った cloud-builders の 2 つ（curl / npm）はいずれも実行環境が古かった。
+  # 新しめのランタイムが要るものは公式イメージを使う。
   - id: deploy
     name: node:22-slim
     entrypoint: bash
