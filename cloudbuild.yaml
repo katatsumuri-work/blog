@@ -13,6 +13,12 @@
 
 substitutions:
   _HUGO_VERSION: '0.161.1'
+  # firebase-tools も固定する。未固定だと毎回その時点の最新が降ってきて、
+  # ある朝いきなり壊れる（Node の要求バージョンが上がる等）余地が残る。
+  # 上げるときは手元で確認してから:
+  #   docker run --rm --platform linux/amd64 node:22-slim \
+  #     bash -c 'npx --yes firebase-tools@<version> --version'
+  _FIREBASE_TOOLS_VERSION: '15.30.0'
 
 steps:
   # Hugo は cloud-builders に無いので公式リリースを取得する。
@@ -30,8 +36,19 @@ steps:
       - |
         set -euo pipefail
         apt-get update -qq && apt-get install -y -qq --no-install-recommends curl ca-certificates
-        url="https://github.com/gohugoio/hugo/releases/download/v${_HUGO_VERSION}/hugo_extended_${_HUGO_VERSION}_linux-amd64.tar.gz"
-        curl -sSL "$url" | tar -xz -C /usr/local/bin hugo
+
+        # 取得したアーカイブは必ず checksum を検証してから展開する。
+        # 配信事故や供給元の侵害を素通りさせないため。
+        # sha256sum は改ざん時も対象が無いときも非ゼロで落ちる（fail-closed）。
+        base="https://github.com/gohugoio/hugo/releases/download/v${_HUGO_VERSION}"
+        tarball="hugo_extended_${_HUGO_VERSION}_linux-amd64.tar.gz"
+        workdir="$(mktemp -d)"
+        curl -sSLo "$workdir/$tarball"       "$base/$tarball"
+        curl -sSLo "$workdir/checksums.txt"  "$base/hugo_${_HUGO_VERSION}_checksums.txt"
+        ( cd "$workdir" && sha256sum --check --ignore-missing checksums.txt )
+        tar -xzf "$workdir/$tarball" -C /usr/local/bin hugo
+        rm -rf "$workdir"
+
         hugo version
         # 未来日の記事は既定で除外される（buildFuture=false）。
         # それが当日公開の仕組みなので、--buildFuture は付けない。
@@ -50,7 +67,7 @@ steps:
       - -c
       - |
         set -euo pipefail
-        npx --yes firebase-tools deploy \
+        npx --yes "firebase-tools@${_FIREBASE_TOOLS_VERSION}" deploy \
           --only hosting \
           --project "$PROJECT_ID" \
           --non-interactive \
