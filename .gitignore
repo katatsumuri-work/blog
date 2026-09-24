@@ -6,5 +6,9 @@
 # Firebase デプロイキャッシュ
 /.firebase/
 
+# Python（scripts/ の実行で生まれる）
+__pycache__/
+*.pyc
+
 # OS
 .DS_Store
