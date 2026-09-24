@@ -80,6 +80,44 @@ npx firebase-tools deploy --only hosting --project katatsumuri-work
 `blog.katatsumuri.work` を追加すると **CNAME**（と確認用 TXT）が提示されるので、
 それをムームードメイン DNS に追加する。**apex の A / MX は触らない＝メール無傷**。SSL は Firebase が自動発行。
 
+## 公開前のチェック（ぼかし漏れ）
+
+公開物に載せてはいけない情報が残っていないかを機械で検査します。
+
+```sh
+python3 scripts/check_sensitive.py
+```
+
+**main 宛ての PR で Cloud Build が自動で走り、落ちると merge できません**
+（トリガーは `blog-pr-sensitive-check`）。デプロイ経路とは別のトリガーなので、
+誤検知で日次公開が止まることはありません。
+
+| 区分 | 対象 | 挙動 |
+|---|---|---|
+| 落とす | 認証情報・個人の絶対パス・内部 IP・機微な固有名詞 | 非ゼロ終了 |
+| 確認だけ | 金額・住所らしき語 | 一覧に出るが落とさない |
+| 目視用 | 外部 URL の全件 | 一覧に出す |
+
+顧客名・個人名・具体的な地名は **この repo に置けません**（public なのでリスト
+自体が漏れます）。Secret Manager の `blog-sensitive-terms` に置いて CI から
+渡しています。手元で顧客名まで含めて検査するときは取り出して渡します。
+
+```sh
+gcloud secrets versions access latest --secret=blog-sensitive-terms \
+  --project=katatsumuri-work > /tmp/terms.txt
+python3 scripts/check_sensitive.py --terms-file /tmp/terms.txt
+rm /tmp/terms.txt
+```
+
+リストを渡さない場合は警告が出て、**顧客名の検査だけ行われません**（他の検査は
+走ります）。CI では `--require-terms` を付けてあるので、取れなければ落ちます。
+
+誤検出だと判断したものは `scripts/sensitive-allow.txt` に積みます。
+「変数名・キー名は許可、実値は禁止」を機械で見分けるのは難しいので、人が確認
+したものを素通しする形にしています。
+
+設定の実体は infra repo の `gcp/cloud-build-blog-pr-check`。
+
 ## 記事の追加
 
 `content/posts/YYYY-MM-DD-{slug}.md` を作る。frontmatter:
