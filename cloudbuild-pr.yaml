@@ -1,0 +1,33 @@
+# PR 用のチェック。公開前に「ぼかし漏れ」を機械で止める。
+#
+# デプロイ（cloudbuild.yaml）とは別のトリガー・別のサービスアカウントで動かす。
+# 理由: デプロイ経路に落ちる要素を足したくない。あちらは push と日次が同じ
+# トリガーを共用しているので、誤検知で落ちると「毎日1本ずつ出す」が崩れ、
+# しかも直すまで毎朝落ち続ける。止めるなら merge の手前が正しい。
+#
+# 機微な固有名詞（顧客名・個人名・具体的な地名）は public なこの repo に
+# 置けないので、Secret Manager から環境変数で渡す。
+# 値の登録は Terraform 管理外（infra の README 参照）。
+
+steps:
+  - id: sensitive-check
+    name: python:3.12-slim
+    entrypoint: bash
+    secretEnv: ['BLOG_SENSITIVE_TERMS']
+    args:
+      - -c
+      - |
+        set -uo pipefail
+        # --require-terms: リストが取れなければ落とす。
+        # 取れないまま素通りすると「検査したつもり」が一番危ない。
+        python3 scripts/check_sensitive.py --require-terms
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/blog-sensitive-terms/versions/latest
+      env: 'BLOG_SENSITIVE_TERMS'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 300s
