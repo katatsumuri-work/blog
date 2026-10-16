@@ -115,7 +115,7 @@ add と commit のあいだに別セッションが index を書き換える隙�
 
 ### 2. コミットの中身はハッシュを指定して見る
 
-このルールは「commit 後に `git show --stat` で中身を見る」です。ただ、**引数なしの `git show` は `HEAD` を表示します**。
+当時のルールは「commit 後に `git show --stat` で中身を見る」でした。ただ、**引数なしの `git show` は `HEAD` を表示します**。
 
 参考: [Git - git-show Documentation](https://git-scm.com/docs/git-show)
 
@@ -125,7 +125,7 @@ add と commit のあいだに別セッションが index を書き換える隙�
 git show --stat -M <hash>
 ```
 
-今の私のルールもハッシュを指定していないので、ここは穴が残っています。
+この記事のレビューでこの穴を指摘されたので、10 月 16 日にルールのほうも、ハッシュを指定して見る形に直しました。
 
 ### 3. revert の前に、相手の変更がどこにあるかを確かめる
 
